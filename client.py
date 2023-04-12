@@ -27,6 +27,8 @@ class Client:
             else:
                 print("Invalid arguments...")
                 return
+        self.list_files()
+
 
     def generateMasterKey(self, password):
         for root, dirs, files in os.walk('./samples/'):
@@ -147,6 +149,7 @@ class Client:
 
 
     def upload_file(self, file_path):
+        """Upload a file to the cloud storage at the given path"""
         upload_url = f"{self.storage_url}/upload"
         with open(file_path, "rb") as file:
             response = requests.post(upload_url, files={"file": file})
@@ -154,9 +157,11 @@ class Client:
                 print("File uploaded successfully!")
             else:
                 print("Failed to upload file.")
+                print(f"Status code: {response.status_code}, {response.reason}")
 
 
     def download_file(self, dz_uuid, filename):
+        """Download a file from the cloud storage with given dz_uuid and save it with given filename"""
         download_url = f"{self.storage_url}/download/{dz_uuid}"
         response = requests.get(download_url)
         if response.status_code == 200:
@@ -165,3 +170,11 @@ class Client:
             print(f"File {dz_uuid}.pdf downloaded successfully.")
         else:
             print(f"Error downloading file. Response code: {response.status_code}")
+
+    def list_files(self):
+        """Prints all the files of the cloud storage."""
+        files = os.scandir("./storage")
+        if files:
+            print("Uploaded files:")
+        for file in files:
+            print(f"- {'_'.join(file.name.split('_')[1:])}")
