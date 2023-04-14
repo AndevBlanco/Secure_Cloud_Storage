@@ -51,7 +51,7 @@ def create_key_ring(key_ring_id):
     print('Created key ring: {}'.format(created_key_ring.name))
     return created_key_ring
 
-def create_key_symmetric_encrypt_decrypt(key_ring_id, key_id):
+def create_symmetric_key(key_ring_id, key_id):
     """
     Creates a new symmetric encryption/decryption key in Cloud KMS.
     Args:
@@ -77,42 +77,6 @@ def create_key_symmetric_encrypt_decrypt(key_ring_id, key_id):
     created_key = client.create_crypto_key(
         request={'parent': key_ring_name, 'crypto_key_id': key_id, 'crypto_key': key})
     print('Created symmetric key: {}'.format(created_key.name))
-    return created_key
-
-def create_key_rotation_schedule(key_ring_id, key_id):
-    """
-    Creates a new key in Cloud KMS that automatically rotates.
-    Args:
-        key_ring_id (string): ID of the Cloud KMS key ring (e.g. 'my-key-ring').
-        key_id (string): ID of the key to create (e.g. 'my-rotating-key').
-    Returns:
-        CryptoKey: Cloud KMS key.
-    """
-    project_id, location_id = get_project_and_location_id()
-    client = kms.KeyManagementServiceClient()
-    # Build the parent key ring name.
-    key_ring_name = client.key_ring_path(project_id, location_id, key_ring_id)
-    # Build the key.
-    purpose = kms.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT
-    algorithm = kms.CryptoKeyVersion.CryptoKeyVersionAlgorithm.GOOGLE_SYMMETRIC_ENCRYPTION
-    key = {
-        'purpose': purpose,
-        'version_template': {
-            'algorithm': algorithm,
-        },
-        # Rotate the key every 30 days.
-        'rotation_period': {
-            'seconds': 60 * 60 * 24 * 30
-        },
-        # Start the first rotation in 24 hours.
-        'next_rotation_time': {
-            'seconds': int(time.time()) + 60 * 60 * 24
-        }
-    }
-    # Call the API.
-    created_key = client.create_crypto_key(
-        request={'parent': key_ring_name, 'crypto_key_id': key_id, 'crypto_key': key})
-    print('Created labeled key: {}'.format(created_key.name))
     return created_key
 
 def build_location_name():
