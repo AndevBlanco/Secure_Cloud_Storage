@@ -29,3 +29,7 @@ Now you should be able to access the Google Cloud key management service!
 `python app.py -ed`
 ##### **Decrypt a file**
 `python app.py -d [namefile]`
+
+---
+### Install OpenSSL
+Download OpenSSL from here: https://slproweb.com/products/Win32OpenSSL.html
