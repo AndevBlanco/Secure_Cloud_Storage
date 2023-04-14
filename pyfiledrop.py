@@ -12,6 +12,7 @@ import uuid
 import zlib
 from bottle import route, run, request, error, response, HTTPError, static_file
 from werkzeug.utils import secure_filename
+from OpenSSL import crypto, SSL
 
 storage_path: Path = Path(__file__).parent / "storage"
 chunk_path: Path = Path(__file__).parent / "chunk"
@@ -28,7 +29,6 @@ dropzone_force_chunking = "true"
 lock = Lock()
 chucks = defaultdict(list)
 
-
 @error(500)
 def handle_500(error_message):
     response.status = 500
@@ -41,98 +41,7 @@ def index():
     index_file = Path(__file__) / "index.html"
     if index_file.exists():
         return index_file.read_text()
-    return f"""
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/dropzone.min.css"/>
-    <link rel="stylesheet" href="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/basic.min.css"/>
-    <script type="application/javascript"
-        src="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/dropzone.min.js">
-    </script>
-    <title>pyfiledrop</title>
-</head>
-<body>
-
-    <div id="content" style="width: 800px; margin: 0 auto;">
-        <h2>Upload new files</h2>
-        <form method="POST" action='/upload' class="dropzone dz-clickable" id="dropper" enctype="multipart/form-data">
-        </form>
-
-        <h2>
-            Uploaded
-            <input type="button" value="Clear" onclick="clearCookies()" />
-        </h2>
-        <div id="uploaded">
-
-        </div>
-
-        <script type="application/javascript">
-            function clearCookies() {{
-                document.cookie = "files=; Max-Age=0";
-                document.getElementById("uploaded").innerHTML = "";
-            }}
-
-            function getFilesFromCookie() {{
-                try {{ return document.cookie.split("=", 2)[1].split("||");}} catch (error) {{ return []; }}
-            }}
-
-            function saveCookie(new_file) {{
-                    let all_files = getFilesFromCookie();
-                    all_files.push(new_file);
-                    document.cookie = `files=${{all_files.join("||")}}`;
-            }}
-
-            function generateLink(combo){{
-                const uuid = combo.split('|^^|')[0];
-                const name = combo.split('|^^|')[1];
-                if ({'true' if allow_downloads else 'false'}) {{
-                    return `<a href="/download/${{uuid}}" download="${{name}}">${{name}}</a>`;
-                }}
-                return name;
-            }}
-
-
-            function init() {{
-
-                Dropzone.options.dropper = {{
-                    paramName: 'file',
-                    chunking: true,
-                    forceChunking: {dropzone_force_chunking},
-                    url: '/upload',
-                    retryChunks: true,
-                    parallelChunkUploads: {dropzone_parallel_chunks},
-                    timeout: {dropzone_timeout}, // microseconds
-                    maxFilesize: {dropzone_max_file_size}, // megabytes
-                    chunkSize: {dropzone_chunk_size}, // bytes
-                    init: function () {{
-                        this.on("complete", function (file) {{
-                            let combo = `${{file.upload.uuid}}|^^|${{file.upload.filename}}`;
-                            saveCookie(combo);
-                            document.getElementById("uploaded").innerHTML += generateLink(combo)  + "<br />";
-                        }});
-                    }}
-                }}
-
-                if (typeof document.cookie !== 'undefined' ) {{
-                    let content = "";
-                     getFilesFromCookie().forEach(function (combo) {{
-                        content += generateLink(combo) + "<br />";
-                    }});
-
-                    document.getElementById("uploaded").innerHTML = content;
-                }}
-            }}
-
-            init();
-
-        </script>
-    </div>
-</body>
-</html>
-    """
-
+    return get_base_html()
 
 @route("/favicon.ico")
 def favicon():
@@ -208,11 +117,104 @@ def download(dz_uuid):
             return static_file(file.name, root=file.parent.absolute(), download=True)
     return HTTPError(status=404)
 
+def get_base_html():
+    return f"""
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/dropzone.min.css"/>
+        <link rel="stylesheet" href="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/basic.min.css"/>
+        <script type="application/javascript"
+            src="{dropzone_cdn.rstrip('/')}/{dropzone_version}/min/dropzone.min.js">
+        </script>
+        <title>pyfiledrop</title>
+    </head>
+    <body>
+
+        <div id="content" style="width: 800px; margin: 0 auto;">
+            <h2>Upload new files</h2>
+            <form method="POST" action='/upload' class="dropzone dz-clickable" id="dropper" enctype="multipart/form-data">
+            </form>
+
+            <h2>
+                Uploaded
+                <input type="button" value="Clear" onclick="clearCookies()" />
+            </h2>
+            <div id="uploaded">
+
+            </div>
+
+            <script type="application/javascript">
+                function clearCookies() {{
+                    document.cookie = "files=; Max-Age=0";
+                    document.getElementById("uploaded").innerHTML = "";
+                }}
+
+                function getFilesFromCookie() {{
+                    try {{ return document.cookie.split("=", 2)[1].split("||");}} catch (error) {{ return []; }}
+                }}
+
+                function saveCookie(new_file) {{
+                        let all_files = getFilesFromCookie();
+                        all_files.push(new_file);
+                        document.cookie = `files=${{all_files.join("||")}}`;
+                }}
+
+                function generateLink(combo){{
+                    const uuid = combo.split('|^^|')[0];
+                    const name = combo.split('|^^|')[1];
+                    if ({'true' if allow_downloads else 'false'}) {{
+                        return `<a href="/download/${{uuid}}" download="${{name}}">${{name}}</a>`;
+                    }}
+                    return name;
+                }}
+
+
+                function init() {{
+
+                    Dropzone.options.dropper = {{
+                        paramName: 'file',
+                        chunking: true,
+                        forceChunking: {dropzone_force_chunking},
+                        url: '/upload',
+                        retryChunks: true,
+                        parallelChunkUploads: {dropzone_parallel_chunks},
+                        timeout: {dropzone_timeout}, // microseconds
+                        maxFilesize: {dropzone_max_file_size}, // megabytes
+                        chunkSize: {dropzone_chunk_size}, // bytes
+                        init: function () {{
+                            this.on("complete", function (file) {{
+                                let combo = `${{file.upload.uuid}}|^^|${{file.upload.filename}}`;
+                                saveCookie(combo);
+                                document.getElementById("uploaded").innerHTML += generateLink(combo)  + "<br />";
+                            }});
+                        }}
+                    }}
+
+                    if (typeof document.cookie !== 'undefined' ) {{
+                        let content = "";
+                        getFilesFromCookie().forEach(function (combo) {{
+                            content += generateLink(combo) + "<br />";
+                        }});
+
+                        document.getElementById("uploaded").innerHTML = content;
+                    }}
+                }}
+
+                init();
+
+            </script>
+        </div>
+    </body>
+    </html>
+    """
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--port", type=int, default=16273, required=False)
-    parser.add_argument("--host", type=str, default="0.0.0.0", required=False)
+    parser.add_argument("-p", "--port", type=int, default=443, required=False)
+    parser.add_argument("--host", type=str, default="localhost", required=False)
     parser.add_argument("-s", "--storage", type=str, default=str(storage_path), required=False)
     parser.add_argument("-c", "--chunks", type=str, default=str(chunk_path), required=False)
     parser.add_argument(
@@ -234,6 +236,7 @@ def parse_args():
     parser.add_argument("--dz-cdn", type=str, default=None, required=False)
     parser.add_argument("--dz-version", type=str, default=None, required=False)
     return parser.parse_args()
+
 
 
 if __name__ == "__main__":
@@ -275,4 +278,7 @@ Storage Path: {storage_path.absolute()}
 Chunk Path: {chunk_path.absolute()}
 """
     )
-    run(server="paste", port=args.port, host=args.host)
+    context = SSL.Context(SSL.TLSv1_2_METHOD)
+    context.use_privatekey_file('key.pem')
+    context.use_certificate_file('cert.pem')
+    run(server="paste", port=args.port, host=args.host)#, ssl_context=context)
