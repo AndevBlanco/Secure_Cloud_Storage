@@ -22,8 +22,11 @@ https://cloud.google.com/sdk/docs/install?hl=en
 
 Now you should be able to access the Google Cloud key management service!
 ### **Run client**
-##### **Encrypt all files just with Master Key**
-`python app.py -em`
+##### **Encrypt all files with Master Key**
+`python app.py -em *`
+
+##### **Encrypt a file with Master Key**
+`python app.py -em [path]`
 
 ##### **Encrypt each file using Data Encryption Key and Master Key and password**
 `python app.py -ed`

@@ -1,0 +1,1 @@
+{"config.json": {"encrypted_with_master_key": true, "encrypted_with_data_key": false, "hasKeyRotation": false}, "test1.key": {"encrypted_with_master_key": true, "encrypted_with_data_key": false, "hasKeyRotation": false}, "test1.txt": {"encrypted_with_master_key": true, "encrypted_with_data_key": false, "hasKeyRotation": false}}
