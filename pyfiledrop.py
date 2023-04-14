@@ -10,9 +10,12 @@ import shutil
 import argparse
 import uuid
 import zlib
-from bottle import route, run, request, error, response, HTTPError, static_file
+from bottle import Bottle, route, run, request, error, response, HTTPError, static_file
 from werkzeug.utils import secure_filename
 from OpenSSL import crypto, SSL
+from cheroot.wsgi import Server as WSGIServer
+from cheroot.ssl.builtin import BuiltinSSLAdapter
+
 
 storage_path: Path = Path(__file__).parent / "storage"
 chunk_path: Path = Path(__file__).parent / "chunk"
@@ -26,6 +29,7 @@ dropzone_chunk_size = "1000000"
 dropzone_parallel_chunks = "true"
 dropzone_force_chunking = "true"
 
+app = Bottle()
 lock = Lock()
 chucks = defaultdict(list)
 
@@ -36,32 +40,15 @@ def handle_500(error_message):
     return response
 
 
-@route("/")
+@app.route("/")
 def index():
     index_file = Path(__file__) / "index.html"
     if index_file.exists():
         return index_file.read_text()
     return get_base_html()
 
-@route("/favicon.ico")
-def favicon():
-    return zlib.decompress(
-        b"x\x9c\xedVYN\xc40\x0c5J%[\xe2\xa3|q\x06\x8e1G\xe1(=ZoV\xb2\xa7\x89\x97R\x8d\x84\x04\xe4\xa5\xcb(\xc9\xb3\x1do"
-        b"\x1d\x80\x17?\x1e\x0f\xf0O\x82\xcfw\x00\x7f\xc1\x87\xbf\xfd\x14l\x90\xe6#\xde@\xc1\x966n[z\x85\x11\xa6\xfcc"
-        b"\xdfw?s\xc4\x0b\x8e#\xbd\xc2\x08S\xe1111\xf1k\xb1NL\xfcU<\x99\xe4T\xf8\xf43|\xaa\x18\xf8\xc3\xbaHFw\xaaj\x94"
-        b"\xf4c[F\xc6\xee\xbb\xc2\xc0\x17\xf6\xf4\x12\x160\xf9\xa3\xfeQB5\xab@\xf4\x1f\xa55r\xf9\xa4KGG\xee\x16\xdd\xff"
-        b"\x8e\x9d\x8by\xc4\xe4\x17\tU\xbdDg\xf1\xeb\xf0Zh\x8e\xd3s\x9c\xab\xc3P\n<e\xcb$\x05 b\xd8\x84Q1\x8a\xd6Kt\xe6"
-        b"\x85(\x13\xe5\xf3]j\xcf\x06\x88\xe6K\x02\x84\x18\x90\xc5\xa7Kz\xd4\x11\xeeEZK\x012\xe9\xab\xa5\xbf\xb3@i\x00"
-        b"\xce\xe47\x0b\xb4\xfe\xb1d\xffk\xebh\xd3\xa3\xfd\xa4:`5J\xa3\xf1\xf5\xf4\xcf\x02tz\x8c_\xd2\xa1\xee\xe1\xad"
-        b"\xaa\xb7n-\xe5\xafoSQ\x14'\x01\xb7\x9b<\x15~\x0e\xf4b\x8a\x90k\x8c\xdaO\xfb\x18<H\x9d\xdfj\xab\xd0\xb43\xe1"
-        b'\xe3nt\x16\xdf\r\xe6\xa1d\xad\xd0\xc9z\x03"\xc7c\x94v\xb6I\xe1\x8f\xf5,\xaa2\x93}\x90\xe0\x94\x1d\xd2\xfcY~f'
-        b"\xab\r\xc1\xc8\xc4\xe4\x1f\xed\x03\x1e`\xd6\x02\xda\xc7k\x16\x1a\xf4\xcb2Q\x05\xa0\xe6\xb4\x1e\xa4\x84\xc6"
-        b"\xcc..`8'\x9a\xc9-\n\xa8\x05]?\xa3\xdfn\x11-\xcc\x0b\xb4\x7f67:\x0c\xcf\xd5\xbb\xfd\x89\x9ebG\xf8:\x8bG"
-        b"\xc0\xfb\x9dm\xe2\xdf\x80g\xea\xc4\xc45\xbe\x00\x03\xe9\xd6\xbb"
-    )
 
-
-@route("/upload", method="POST")
+@app.route("/upload", method="POST")
 def upload():
     file = request.files.get("file")
     if not file:
@@ -108,7 +95,7 @@ def upload():
     return "Chunk upload successful"
 
 
-@route("/download/<dz_uuid>")
+@app.route("/download/<dz_uuid>")
 def download(dz_uuid):
     if not allow_downloads:
         raise HTTPError(status=403)
@@ -278,7 +265,6 @@ Storage Path: {storage_path.absolute()}
 Chunk Path: {chunk_path.absolute()}
 """
     )
-    context = SSL.Context(SSL.TLSv1_2_METHOD)
-    context.use_privatekey_file('key.pem')
-    context.use_certificate_file('cert.pem')
-    run(server="paste", port=args.port, host=args.host)#, ssl_context=context)
+    server = WSGIServer(("localhost", 443), app)
+    server.ssl_adapter = BuiltinSSLAdapter(certificate='cert.pem', private_key='key.pem')
+    server.start()
