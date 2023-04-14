@@ -32,4 +32,5 @@ Now you should be able to access the Google Cloud key management service!
 
 ---
 ### Install OpenSSL
-Download OpenSSL from here: https://slproweb.com/products/Win32OpenSSL.html
+#### Download OpenSSL from here: https://slproweb.com/products/Win32OpenSSL.html
+#### Create SSL certificate: openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
