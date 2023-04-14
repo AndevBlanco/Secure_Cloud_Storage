@@ -16,7 +16,7 @@ https://cloud.google.com/sdk/docs/install?hl=en
 `gcloud auth application-default login`
 
 #### **4. Run this to set the quota project** (not sure if necessary)
-`gcloud auth application-default set-quota-project security-lab-kms`
+`gcloud auth application-default set-quota-project uma-security-lab-kms`
 
 #### **5. Make sure you have a `.env` file with the credentials stored locally**
 
