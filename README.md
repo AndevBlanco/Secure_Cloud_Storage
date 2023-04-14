@@ -16,7 +16,7 @@ https://cloud.google.com/sdk/docs/install?hl=en
 `gcloud auth application-default login`
 
 #### **4. Run this to set the quota project** (not sure if necessary)
-`gcloud auth application-default set-quota-project security-lab-kms`
+`gcloud auth application-default set-quota-project uma-security-lab-kms`
 
 #### **5. Make sure you have a `.env` file with the credentials stored locally**
 
@@ -32,3 +32,8 @@ Now you should be able to access the Google Cloud key management service!
 `python app.py -ed`
 ##### **Decrypt a file**
 `python app.py -d [namefile]`
+
+---
+### Install OpenSSL
+#### Download OpenSSL from here: https://slproweb.com/products/Win32OpenSSL.html
+#### Create SSL certificate: openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365

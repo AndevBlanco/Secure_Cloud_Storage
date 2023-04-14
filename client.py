@@ -1,9 +1,15 @@
+<<<<<<< HEAD
 from ast import arg
 import os, json
+=======
+import os
+>>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
 import base64
-from cryptography.fernet import Fernet
 import getpass
+import requests
+from ast import arg
 from saltManager import derive_key
+<<<<<<< HEAD
 import shutil
 import datetime
 
@@ -18,6 +24,19 @@ class Client:
             self.generateMasterKey(password)
             self.fernet = Fernet(self.master_key)
             if args["encrypt_master_key"] == '*':
+=======
+from cryptography.fernet import Fernet
+from cryptography.exceptions import InvalidKey, InvalidSignature
+
+class Client:
+    def __init__(self, args):
+        self.storage_url = 'http://localhost:16273'
+        password = bytes(getpass.getpass(prompt='Enter your password for Master Key:'), 'utf-8')
+        self.generateMasterKey(password)
+        if self.master_key:
+            if args.encrypt_master_key:
+                self.fernet = Fernet(self.master_key)
+>>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
                 self.encryptAllFilesWithMasterKey()
             else:
                 self.encryptFileWithMasterKey(args["encrypt_master_key"])
@@ -26,6 +45,7 @@ class Client:
             self.generateMasterKey(password)
             self.encryptEachFileWithDataKey()
 
+<<<<<<< HEAD
         elif "key_timeout" in args and args["key_timeout"] and args["key_timeout"] != 0:
             self.moveFilesToFolder()
             self.generateMasterKey(password)
@@ -36,6 +56,14 @@ class Client:
         elif "decrypt" in args and args["decrypt"] != '':
             self.generateMasterKey(password)
             self.decryptFile(args["decrypt"])
+=======
+            elif args.encrypt_data_key:
+                # Ask the user for a password to protect the master key
+                self.encryptEachFileWithDataKey()
+
+            elif args.decrypt:
+                self.decryptFile(args["decrypt"].split("/")[-1])
+>>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
 
         else:
             print("Invalid arguments...")
@@ -57,10 +85,17 @@ class Client:
             if file in self.config:
                 self.config[file]['encrypted_with_master_key'] = True
             else:
+<<<<<<< HEAD
                 self.config[file] = {'encrypted_with_master_key': True, 'encrypted_with_data_key': False, 'hasKeyRotation': False}
 
             print(json.dumps(self.config))
             conf.write(json.dumps(self.config))
+=======
+                print("Invalid arguments...")
+                return
+        self.list_files()
+
+>>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
 
     def generateMasterKey(self, password):
         print(self.current_folder)
@@ -198,6 +233,7 @@ class Client:
 
         print(f"File decrypted: {file_decrypted.decode('utf-8')}")
 
+<<<<<<< HEAD
     def moveFilesToFolder(self):
         # Get a list of numeric identifiers from existing folders
         identifiers = [int(folder.split("_")[1]) for folder in os.listdir(self.root_folder) if folder.startswith("MKR_")]
@@ -226,3 +262,36 @@ class Client:
             shutil.move(self.root_folder + file, self.current_folder)
             print(f'File {file} moved to {self.current_folder}')
 
+=======
+
+    def upload_file(self, file_path):
+        """Upload a file to the cloud storage at the given path"""
+        upload_url = f"{self.storage_url}/upload"
+        with open(file_path, "rb") as file:
+            response = requests.post(upload_url, files={"file": file})
+            if response.ok:
+                print("File uploaded successfully!")
+            else:
+                print("Failed to upload file.")
+                print(f"Status code: {response.status_code}, {response.reason}")
+
+
+    def download_file(self, dz_uuid, filename):
+        """Download a file from the cloud storage with given dz_uuid and save it with given filename"""
+        download_url = f"{self.storage_url}/download/{dz_uuid}"
+        response = requests.get(download_url)
+        if response.status_code == 200:
+            with open(filename, "wb") as f:
+                f.write(response.content)
+            print(f"File {dz_uuid}.pdf downloaded successfully.")
+        else:
+            print(f"Error downloading file. Response code: {response.status_code}")
+
+    def list_files(self):
+        """Prints all the files of the cloud storage."""
+        files = os.scandir("./storage")
+        if files:
+            print("Uploaded files:")
+        for file in files:
+            print(f"- {'_'.join(file.name.split('_')[1:])}")
+>>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
