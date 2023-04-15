@@ -9,8 +9,8 @@ import datetime
 
 class Client:
     def __init__(self, args):
-        self.root_folder = './samples/'
-        self.current_folder = './samples/'
+        self.root_folder = './client-side/'
+        self.current_folder = './client-side/'
         self.config_folder = ''
         password = bytes(getpass.getpass(prompt='Enter your password for Master Key:'), 'utf-8')
         self.createConfigFile()
@@ -18,7 +18,7 @@ class Client:
             self.generateMasterKey(password)
             self.fernet = Fernet(self.master_key)
             if args["encrypt_master_key"] == '*':
-                self.config_folder = '.\\samples\\'
+                self.config_folder = '.\\client-side\\'
                 self.encryptAllFilesWithMasterKey()
             else:
                 self.encryptFileWithMasterKey(args["encrypt_master_key"])
@@ -26,7 +26,7 @@ class Client:
         elif "encrypt_data_key" in args and args["encrypt_data_key"]:
             self.generateMasterKey(password)
             if args["encrypt_data_key"] == '*':
-                self.config_folder = '.\\samples\\'
+                self.config_folder = '.\\client-side\\'
                 self.encryptAllFilesWithDataKey()
             else:
                 self.encryptFileWithDataKey(args["encrypt_data_key"])
@@ -65,7 +65,6 @@ class Client:
             else:
                 self.config[file][property] = True
 
-            print(json.dumps(self.config))
             conf.write(json.dumps(self.config))
 
     def generateMasterKey(self, password):
@@ -111,7 +110,6 @@ class Client:
 
     def checkIfFileIsAlreadyEncrypted(self, file):
         file = self.config_folder + file
-        print(f'File receiveeeeeeeeeeeeeeeeeeeeeeeeed: {file}')
         fileAlreadyEncrypted = False
         if file in self.config:
             print(f'File {file} is already encrypted...')
@@ -126,10 +124,7 @@ class Client:
                 # Ignore the master key file
                 if file == 'master_key.key' or file == 'config.json'  or '.key' in file or file.split('.')[0] + '.key' in files:
                     continue
-                print(f'--------------------------------------{file}')
-                print(f' fileeee {file}')
-                print(root)
-                print(dirs)
+
                 fileAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(file)
                 if fileAlreadyEncrypted == False:
                     # Read the contents of the file
@@ -248,7 +243,7 @@ class Client:
                 file_decrypted = fer.decrypt(self.file_data)
 
             elif 'hasKeyRotation' in self.config[file] and self.config[file]['hasKeyRotation']:
-                print("hol")
+                print("hi")
         else:
             print(f'File {file} not found!')
 

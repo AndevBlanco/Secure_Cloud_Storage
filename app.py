@@ -21,7 +21,6 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--decrypt", dest="decrypt", help="Decrypt a file", required=False)
     parser.add_argument("-kt", "--key_timeout", dest="key_timeout", type=int, default=0, help="The time after which we need to regenerate the encryption keys in seconds")
     args = vars(parser.parse_args())
-    print(args)
     client = Client(args)
     # thread = threading.Thread(target=keyRotation)
     # thread.daemon = True
