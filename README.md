@@ -28,10 +28,14 @@ Now you should be able to access the Google Cloud key management service!
 ##### **Encrypt a file with Master Key**
 `python app.py -em [path]`
 
-##### **Encrypt each file using Data Encryption Key and Master Key and password**
-`python app.py -ed`
+##### **Encrypt all files using Data Encryption Key and Master Key and password**
+`python app.py -ed *`
+
+##### **Encrypt a file using Data Encryption Key and Master Key and password**
+`python app.py -ed [path]`
+
 ##### **Decrypt a file**
-`python app.py -d [namefile]`
+`python app.py -d [path]`
 
 ---
 ### Install OpenSSL
