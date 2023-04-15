@@ -1,15 +1,9 @@
-<<<<<<< HEAD
 from ast import arg
-import os, json
-=======
-import os
->>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
+import os, json, sys
 import base64
+from cryptography.fernet import Fernet
 import getpass
-import requests
-from ast import arg
 from saltManager import derive_key
-<<<<<<< HEAD
 import shutil
 import datetime
 
@@ -17,35 +11,26 @@ class Client:
     def __init__(self, args):
         self.root_folder = './samples/'
         self.current_folder = './samples/'
+        self.config_folder = ''
         password = bytes(getpass.getpass(prompt='Enter your password for Master Key:'), 'utf-8')
         self.createConfigFile()
-
         if "encrypt_master_key" in args and args["encrypt_master_key"]:
             self.generateMasterKey(password)
             self.fernet = Fernet(self.master_key)
             if args["encrypt_master_key"] == '*':
-=======
-from cryptography.fernet import Fernet
-from cryptography.exceptions import InvalidKey, InvalidSignature
-
-class Client:
-    def __init__(self, args):
-        self.storage_url = 'http://localhost:16273'
-        password = bytes(getpass.getpass(prompt='Enter your password for Master Key:'), 'utf-8')
-        self.generateMasterKey(password)
-        if self.master_key:
-            if args.encrypt_master_key:
-                self.fernet = Fernet(self.master_key)
->>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
+                self.config_folder = '.\\samples\\'
                 self.encryptAllFilesWithMasterKey()
             else:
                 self.encryptFileWithMasterKey(args["encrypt_master_key"])
 
         elif "encrypt_data_key" in args and args["encrypt_data_key"]:
             self.generateMasterKey(password)
-            self.encryptEachFileWithDataKey()
+            if args["encrypt_data_key"] == '*':
+                self.config_folder = '.\\samples\\'
+                self.encryptAllFilesWithDataKey()
+            else:
+                self.encryptFileWithDataKey(args["encrypt_data_key"])
 
-<<<<<<< HEAD
         elif "key_timeout" in args and args["key_timeout"] and args["key_timeout"] != 0:
             self.moveFilesToFolder()
             self.generateMasterKey(password)
@@ -56,14 +41,6 @@ class Client:
         elif "decrypt" in args and args["decrypt"] != '':
             self.generateMasterKey(password)
             self.decryptFile(args["decrypt"])
-=======
-            elif args.encrypt_data_key:
-                # Ask the user for a password to protect the master key
-                self.encryptEachFileWithDataKey()
-
-            elif args.decrypt:
-                self.decryptFile(args["decrypt"].split("/")[-1])
->>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
 
         else:
             print("Invalid arguments...")
@@ -73,32 +50,25 @@ class Client:
         for root, dirs, files in os.walk(self.root_folder):
             if 'config.json' not in files:
                 with open(self.root_folder + 'config.json', 'w') as f:
-                    f.write(json.dumps({}))
+                    f.write("{}")
             
             else:
                 with open(self.root_folder + 'config.json', 'r') as f:
                     self.config = json.loads(f.read())
 
-    def editConfigFile(self, file):
-        print(file)
+    def editConfigFile(self, file, property):
+        file = self.config_folder + file
         with open(self.root_folder + 'config.json', 'w') as conf:
-            if file in self.config:
-                self.config[file]['encrypted_with_master_key'] = True
+            if file not in self.config:
+                self.config[file] = {property: True}
+            
             else:
-<<<<<<< HEAD
-                self.config[file] = {'encrypted_with_master_key': True, 'encrypted_with_data_key': False, 'hasKeyRotation': False}
+                self.config[file][property] = True
 
             print(json.dumps(self.config))
             conf.write(json.dumps(self.config))
-=======
-                print("Invalid arguments...")
-                return
-        self.list_files()
-
->>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
 
     def generateMasterKey(self, password):
-        print(self.current_folder)
         for root, dirs, files in os.walk(self.current_folder):
             if 'master_key.key' not in files:
                 # Generate a unique master key
@@ -136,75 +106,125 @@ class Client:
 
             self.master_key = fernet.decrypt(encrypted_master_key)
         except:
-            print("Incorrect password!")
             self.master_key = None
+            sys.exit("Incorrect password!")
+
+    def checkIfFileIsAlreadyEncrypted(self, file):
+        file = self.config_folder + file
+        print(f'File receiveeeeeeeeeeeeeeeeeeeeeeeeed: {file}')
+        fileAlreadyEncrypted = False
+        if file in self.config:
+            print(f'File {file} is already encrypted...')
+            fileAlreadyEncrypted = True
+
+        return fileAlreadyEncrypted
 
     def encryptAllFilesWithMasterKey(self):
         # Encrypt all files in the current directory and its subdirectories
         for root, dirs, files in os.walk(self.current_folder):
             for file in files:
                 # Ignore the master key file
-                if file == 'master_key.key':
+                if file == 'master_key.key' or file == 'config.json'  or '.key' in file or file.split('.')[0] + '.key' in files:
                     continue
+                print(f'--------------------------------------{file}')
+                print(f' fileeee {file}')
+                print(root)
+                print(dirs)
+                fileAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(file)
+                if fileAlreadyEncrypted == False:
+                    # Read the contents of the file
+                    with open(os.path.join(root, file), 'rb') as f:
+                        content = f.read()
 
-                # Read the contents of the file
-                with open(os.path.join(root, file), 'rb') as f:
-                    content = f.read()
+                    # Encrypt the content and write the result to the same file
+                    encrypted_content = self.fernet.encrypt(content)
+                    with open(os.path.join(root, file), 'wb') as f:
+                        f.write(encrypted_content)
 
-                # Encrypt the content and write the result to the same file
-                encrypted_content = self.fernet.encrypt(content)
-                with open(os.path.join(root, file), 'wb') as f:
-                    f.write(encrypted_content)
-
-                self.editConfigFile(file)
-                    
-                print(f'File {file} encrypted...')
+                    self.editConfigFile(file, 'encrypted_with_master_key')
+                        
+                    print(f'File {file} encrypted...')
 
     def encryptFileWithMasterKey(self, path):
-        # Read the contents of the file
-        with open(os.path.join(path), 'rb') as f:
-            content = f.read()
+        fileAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(path)
+        if fileAlreadyEncrypted == False:
+            # Read the contents of the file
+            with open(os.path.join(path), 'rb') as f:
+                content = f.read()
 
-        # Encrypt the content and write the result to the same file
-        encrypted_content = self.fernet.encrypt(content)
-        with open(os.path.join(path), 'wb') as f:
-            f.write(encrypted_content)
+            # Encrypt the content and write the result to the same file
+            encrypted_content = self.fernet.encrypt(content)
+            with open(os.path.join(path), 'wb') as f:
+                f.write(encrypted_content)
 
-        self.editConfigFile(path)
+            self.editConfigFile(path, 'encrypted_with_master_key')
 
-        print(f'File {path} encrypted...')
+            print(f'File {path} encrypted...')
 
-    def encryptEachFileWithDataKey(self):
+    def encryptAllFilesWithDataKey(self):
         # Encrypt all files in the current directory and its subdirectories
         for root, dirs, files in os.walk(self.root_folder):
             for file in files:
                 # Ignore the master key and dek files
-                if file == 'master_key.key' or '.key' in file or file.split('.')[0] + '.key' in files:
+                if file == 'master_key.key' or file == 'config.json'  or '.key' in file or file.split('.')[0] + '.key' in files:
                     continue
 
-                # Load the file data to be encrypted
-                with open(os.path.join(root, file), 'rb') as fileToEncrypt:
-                    file_data = fileToEncrypt.read()
+                fileAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(file)
+                if fileAlreadyEncrypted == False:
+                    # Load the file data to be encrypted
+                    with open(os.path.join(root, file), 'rb') as fileToEncrypt:
+                        file_data = fileToEncrypt.read()
 
-                # Generate a new DEK for the file
-                dek = Fernet.generate_key()
+                    # Generate a new DEK for the file
+                    dek = Fernet.generate_key()
 
-                # Encrypt the file using the DEK and Master Key
-                fernet = Fernet(dek)
-                encrypted_file = fernet.encrypt(file_data)
+                    # Encrypt the file using the DEK and Master Key
+                    fernet = Fernet(dek)
+                    encrypted_file = fernet.encrypt(file_data)
 
-                # Encrypt the DEK with MK and password
-                fernet2 = Fernet(self.master_key)
-                encrypted_key = fernet2.encrypt(dek)
+                    # Encrypt the DEK with MK and password
+                    fernet2 = Fernet(self.master_key)
+                    encrypted_key = fernet2.encrypt(dek)
 
-                # Save the encrypted file and encrypted DEK to files
-                with open(os.path.join(root, file), 'wb') as fileEncrypted:
-                    fileEncrypted.write(encrypted_file)
+                    # Save the encrypted file and encrypted DEK to files
+                    with open(os.path.join(root, file), 'wb') as fileEncrypted:
+                        fileEncrypted.write(encrypted_file)
 
-                with open(os.path.join(root, file.split('.')[0] + '.key'), 'wb') as fileKey:
-                    fileKey.write(encrypted_key)
+                    with open(os.path.join(root, file.split('.')[0] + '.key'), 'wb') as fileKey:
+                        fileKey.write(encrypted_key)
 
-                print(f'File {file} encrypted')
+                    self.editConfigFile(file, 'encrypted_with_data_key')
+
+                    print(f'File {file} encrypted')
+
+    def encryptFileWithDataKey(self, file):
+        fileAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(file)
+        if fileAlreadyEncrypted == False:
+            # Load the file data to be encrypted
+            with open(os.path.join(file), 'rb') as fileToEncrypt:
+                file_data = fileToEncrypt.read()
+
+            # Generate a new DEK for the file
+            dek = Fernet.generate_key()
+
+            # Encrypt the file using the DEK and Master Key
+            fernet = Fernet(dek)
+            encrypted_file = fernet.encrypt(file_data)
+
+            # Encrypt the DEK with MK and password
+            fernet2 = Fernet(self.master_key)
+            encrypted_key = fernet2.encrypt(dek)
+
+            # Save the encrypted file and encrypted DEK to files
+            with open(os.path.join(file), 'wb') as fileEncrypted:
+                fileEncrypted.write(encrypted_file)
+
+            with open(os.path.join(file.split('.')[0] + '.key'), 'wb') as fileKey:
+                fileKey.write(encrypted_key)
+                
+            self.editConfigFile(file, 'encrypted_with_data_key')
+
+            print(f'File {file} encrypted')
                 
 
     def decryptFile(self, file):
@@ -212,12 +232,13 @@ class Client:
             with open(os.path.join(file), 'rb') as fileToDecrypt:
                 self.file_data = fileToDecrypt.read()
 
-            if self.config[file]['encrypted_with_master_key']:
+            if 'encrypted_with_master_key' in self.config[file] and self.config[file]['encrypted_with_master_key']:
                 fer = Fernet(self.master_key)
                 file_decrypted = fer.decrypt(self.file_data)
             
-            elif self.config[file]['encrypted_with_data_key']:
-                with open(os.path.join(file.split(".")[0] + '.key'), 'rb') as keyToDecrypt:
+            elif 'encrypted_with_data_key' in self.config[file] and self.config[file]['encrypted_with_data_key']:
+                file = (file.split(".")[-2]).split("\\")[-1]
+                with open(os.path.join(self.current_folder + file + '.key'), 'rb') as keyToDecrypt:
                     self.key_data = keyToDecrypt.read()
 
                 fernet = Fernet(self.master_key)
@@ -226,14 +247,13 @@ class Client:
                 fer = Fernet(key_decrypted)
                 file_decrypted = fer.decrypt(self.file_data)
 
-            elif self.config[file]['hasKeyRotation']:
+            elif 'hasKeyRotation' in self.config[file] and self.config[file]['hasKeyRotation']:
                 print("hol")
         else:
             print(f'File {file} not found!')
 
         print(f"File decrypted: {file_decrypted.decode('utf-8')}")
 
-<<<<<<< HEAD
     def moveFilesToFolder(self):
         # Get a list of numeric identifiers from existing folders
         identifiers = [int(folder.split("_")[1]) for folder in os.listdir(self.root_folder) if folder.startswith("MKR_")]
@@ -250,48 +270,14 @@ class Client:
             os.mkdir(new_folder_path)
             print("Folder", new_folder_name, "has been created.")
             self.current_folder = new_folder_path +'/'
-            print("hola")
 
         # Check files that aren't encrypted yet
         files = [f for f in os.listdir(self.root_folder) if os.path.isfile(os.path.join(self.root_folder, f))]
         for file in files:
             # Ignore the master key and dek files
-            if file == 'master_key.key' or '.key' in file or file.split('.')[0] + '.key' in files:
+            if file == 'master_key.key' or '.key' in file or file.split('.')[0] + '.key' in files or file == 'config.json':
                 continue
 
             shutil.move(self.root_folder + file, self.current_folder)
             print(f'File {file} moved to {self.current_folder}')
 
-=======
-
-    def upload_file(self, file_path):
-        """Upload a file to the cloud storage at the given path"""
-        upload_url = f"{self.storage_url}/upload"
-        with open(file_path, "rb") as file:
-            response = requests.post(upload_url, files={"file": file})
-            if response.ok:
-                print("File uploaded successfully!")
-            else:
-                print("Failed to upload file.")
-                print(f"Status code: {response.status_code}, {response.reason}")
-
-
-    def download_file(self, dz_uuid, filename):
-        """Download a file from the cloud storage with given dz_uuid and save it with given filename"""
-        download_url = f"{self.storage_url}/download/{dz_uuid}"
-        response = requests.get(download_url)
-        if response.status_code == 200:
-            with open(filename, "wb") as f:
-                f.write(response.content)
-            print(f"File {dz_uuid}.pdf downloaded successfully.")
-        else:
-            print(f"Error downloading file. Response code: {response.status_code}")
-
-    def list_files(self):
-        """Prints all the files of the cloud storage."""
-        files = os.scandir("./storage")
-        if files:
-            print("Uploaded files:")
-        for file in files:
-            print(f"- {'_'.join(file.name.split('_')[1:])}")
->>>>>>> 81f5cbcad700020c80e3ffa63aa5a18514cf6367
