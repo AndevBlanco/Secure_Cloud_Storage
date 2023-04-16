@@ -1,5 +1,5 @@
 from ast import arg
-import os, json, sys
+import os, json, sys, time
 import base64
 from cryptography.fernet import Fernet
 import getpass
@@ -36,11 +36,25 @@ class Client:
             self.generateMasterKey(password)
             self.fernet = Fernet(self.master_key)
             self.encryptAllFilesWithMasterKey()
-            
+            while True:
+                print("********************************* Regenerating keys *********************************")
+                time.sleep(args["key_timeout"])
+                self.decryptFilesWithMasterKey()
+                os.remove(self.config_folder + 'master_key.key')
+                self.generateMasterKey(password)
+                self.fernet = Fernet(self.master_key)
+                self.encryptAllFilesWithMasterKey()
 
-        elif "decrypt" in args and args["decrypt"] != '':
+        elif "decrypt" in args and args["decrypt"] and args["decrypt"] != '':
             self.generateMasterKey(password)
             self.decryptFile(args["decrypt"])
+
+        elif "decrypt_rotation" in args and args["decrypt_rotation"] != '':
+            path = args['decrypt_rotation'].split('\\')
+            self.config_folder = '.\\client-side\\' + path[-2] + '\\'
+            self.current_folder = './client-side/' + path[-2] + '/'
+            self.generateMasterKey(password)
+            self.decryptFile(args['decrypt_rotation'])
 
         else:
             print("Invalid arguments...")
@@ -130,7 +144,6 @@ class Client:
                     # Read the contents of the file
                     with open(os.path.join(root, file), 'rb') as f:
                         content = f.read()
-
                     # Encrypt the content and write the result to the same file
                     encrypted_content = self.fernet.encrypt(content)
                     with open(os.path.join(root, file), 'wb') as f:
@@ -155,6 +168,26 @@ class Client:
             self.editConfigFile(path, 'encrypted_with_master_key')
 
             print(f'File {path} encrypted...')
+
+    def decryptFilesWithMasterKey(self):
+        for root, dirs, files in os.walk(self.current_folder):
+            for file in files:
+                # Ignore the master key and dek files
+                if file == 'master_key.key' or file == 'config.json'  or '.key' in file or file.split('.')[0] + '.key' in files:
+                    continue
+
+                self.decryptFile(self.config_folder + file)
+                # if self.current_folder + data_file in self.config:
+                #     self.config[self.current_folder + data_file]['hasKeyRotation'] = True
+
+                with open(os.path.join(self.config_folder + file), 'wb') as f:
+                    f.write(self.file_decrypted)
+                
+                del self.config[self.config_folder + file]
+
+                with open(self.root_folder + 'config.json', 'w') as conf:
+                    conf.write(json.dumps(self.config))
+                
 
     def encryptAllFilesWithDataKey(self):
         # Encrypt all files in the current directory and its subdirectories
@@ -229,7 +262,7 @@ class Client:
 
             if 'encrypted_with_master_key' in self.config[file] and self.config[file]['encrypted_with_master_key']:
                 fer = Fernet(self.master_key)
-                file_decrypted = fer.decrypt(self.file_data)
+                self.file_decrypted = fer.decrypt(self.file_data)
             
             elif 'encrypted_with_data_key' in self.config[file] and self.config[file]['encrypted_with_data_key']:
                 file = (file.split(".")[-2]).split("\\")[-1]
@@ -240,14 +273,15 @@ class Client:
                 key_decrypted = fernet.decrypt(self.key_data)
 
                 fer = Fernet(key_decrypted)
-                file_decrypted = fer.decrypt(self.file_data)
+                self.file_decrypted = fer.decrypt(self.file_data)
 
             elif 'hasKeyRotation' in self.config[file] and self.config[file]['hasKeyRotation']:
                 print("hi")
+
+            print(f"File decrypted: {self.file_decrypted.decode('utf-8')}")
         else:
             print(f'File {file} not found!')
 
-        print(f"File decrypted: {file_decrypted.decode('utf-8')}")
 
     def moveFilesToFolder(self):
         # Get a list of numeric identifiers from existing folders
@@ -259,6 +293,7 @@ class Client:
         # Create a new folder with the next consecutive number
         new_folder_name = f"MKR_{last_consecutive + 1}"
         new_folder_path = os.path.join(self.root_folder, new_folder_name)
+        self.config_folder = '.\\client-side\\' + new_folder_name + '\\'
 
         # Check if the folder already exists
         if not os.path.exists(new_folder_path):
@@ -273,6 +308,8 @@ class Client:
             if file == 'master_key.key' or '.key' in file or file.split('.')[0] + '.key' in files or file == 'config.json':
                 continue
 
-            shutil.move(self.root_folder + file, self.current_folder)
-            print(f'File {file} moved to {self.current_folder}')
+            fileIsAlreadyEncrypted = self.checkIfFileIsAlreadyEncrypted(file)
+            if fileIsAlreadyEncrypted == False:
+                shutil.move(self.root_folder + file, self.current_folder)
+                print(f'File {file} moved to {self.current_folder}')
 
