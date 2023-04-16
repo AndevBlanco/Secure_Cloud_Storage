@@ -4,3 +4,5 @@ __pycache__
 /samples/*.key
 .salt
 /storage
+credentials.json
+masterkey.key
