@@ -5,22 +5,19 @@
 `pip install -r requirements.txt`
 
 ---
-### Google Cloud Key Management Service
-#### **1. Install Google Cloud CLI**
-https://cloud.google.com/sdk/docs/install?hl=en
 
-#### **2. If not already done, run this to sign it to initialize `gcloud`**
-`gcloud init`
+#### **1. If not already done, create a key in Amazon KMS. Create credentials to use the service.
+Set the credentials information in a file called `credentials.json` and fill this information:
+```json
+{
+    "ACCESS_KEY_ID": "your_access_key_id",
+    "SECRET_ACCESS_KEY": "your_secret_access_key",
+    "REGION_NAME": "your_region_name",
+    "KEY_ID":"your_key_id"
+}
+```
 
-#### **3. Run this to save the credentials locally**
-`gcloud auth application-default login`
-
-#### **4. Run this to set the quota project** (not sure if necessary)
-`gcloud auth application-default set-quota-project uma-security-lab-kms`
-
-#### **5. Make sure you have a `.env` file with the credentials stored locally**
-
-Now you should be able to access the Google Cloud key management service!
+Now you should be able to access the Amazon KMS service!
 ### **Run client**
 ##### **Encrypt all files with Master Key**
 `python app.py -em *`
@@ -38,6 +35,11 @@ Now you should be able to access the Google Cloud key management service!
 `python app.py -d [path]`
 
 ---
+
+### **Run server**
 ### Install OpenSSL
 #### Download OpenSSL from here: https://slproweb.com/products/Win32OpenSSL.html
 #### Create SSL certificate: openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+
+### **Run server:**
+`python pyfiledrop.py --chunk-size [chunk-size]`
